@@ -35,7 +35,7 @@ namespace ProgettoWebApi.Controllers
 
             if (biglietto == null)
             {
-                _logger.LogWarning("Nessun biglietto disponibile per EventoId: {EventoId}", dto.EventoId);
+                _logger.LogWarning($"Nessun biglietto disponibile per EventoId: {dto.EventoId}");
                 return BadRequest(new { message = "Nessun biglietto disponibile per questo evento" });
             }
 
@@ -44,6 +44,7 @@ namespace ProgettoWebApi.Controllers
                 BigliettoId = biglietto.BigliettoId,
                 EventoId = biglietto.EventoId,
                 EventoTitolo = biglietto.Evento?.Titolo,
+                DataEvento = biglietto.Evento?.Data,
                 ArtistaId = biglietto.ArtistaId,
                 ArtistaNome = biglietto.Evento?.Artista?.Nome,
                 UserId = biglietto.UserId,
@@ -51,7 +52,7 @@ namespace ProgettoWebApi.Controllers
                 DataAcquisto = biglietto.DataAcquisto
             };
 
-            _logger.LogInformation("Biglietto acquistato - ID: {Id}, UserId: {UserId}", biglietto.BigliettoId, userId);
+            _logger.LogInformation($"Biglietto acquistato - ID: {biglietto.BigliettoId}, UserId: {userId}");
             return Ok(new { message = "Acquisto completato", data = response });
         }
 
@@ -71,7 +72,7 @@ namespace ProgettoWebApi.Controllers
 
             if (biglietti == null || !biglietti.Any())
             {
-                _logger.LogInformation("Nessun biglietto trovato per utente {UserId}", userId);
+                _logger.LogInformation($"Nessun biglietto trovato per utente {userId}");
                 return Ok(new { message = "Nessun biglietto trovato", data = new List<BigliettoResponseDto>() });
             }
 
@@ -88,7 +89,7 @@ namespace ProgettoWebApi.Controllers
                 EmailUtente = b.User?.Email
             });
 
-            _logger.LogInformation("Restituiti {Count} biglietti per utente {UserId}", dto.Count(), userId);
+            _logger.LogInformation($"Restituiti {dto.Count()} biglietti per utente {userId}");
 
             return Ok(new { message = "Biglietti trovati", data = dto });
         }

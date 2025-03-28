@@ -28,7 +28,7 @@ namespace ProgettoWebApi.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Errore nel recupero eventi");
-                return new();
+                return null;
             }
         }
 

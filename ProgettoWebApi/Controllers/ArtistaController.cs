@@ -68,7 +68,7 @@ namespace ProgettoWebApi.Controllers
             var created = await _service.CreateAsync(artista);
             _logger.LogInformation("Artista creato ID: {Id}", created.ArtistaId);
 
-            return Ok(new { message = "Artista creato", data = created.ArtistaId });
+            return Ok(new { message = "Artista creato", id = created.ArtistaId });
         }
 
         [HttpPut("{id:int}")]

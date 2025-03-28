@@ -27,7 +27,7 @@ namespace ProgettoWebApi.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Errore durante il recupero degli artisti");
-                return new();
+                return null;
             }
         }
 
@@ -39,7 +39,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore recuperando artista ID {Id}", id);
+                _logger.LogError(ex, "Errore recuperando artista ID {id}");
                 return null;
             }
         }
@@ -55,7 +55,7 @@ namespace ProgettoWebApi.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Errore nella creazione artista");
-                throw;
+                return null;
             }
         }
 

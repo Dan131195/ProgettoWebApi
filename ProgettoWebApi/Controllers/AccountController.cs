@@ -51,13 +51,13 @@ namespace ProgettoWebApi.Controllers
 
             if (!result.Succeeded)
             {
-                _logger.LogWarning("❌ Registrazione fallita: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                _logger.LogWarning($"Registrazione fallita: {result.Errors.Select(e => e.Description)}");
                 return BadRequest(result.Errors);
             }
 
-            await _userManager.AddToRoleAsync(newUser, "User");
+            await _userManager.AddToRoleAsync(newUser, "Admin");
 
-            _logger.LogInformation("✅ Utente registrato: {Email}", newUser.Email);
+            _logger.LogInformation($"Utente registrato: {newUser.Email}");
             return Ok(new { message = "Registrazione completata" });
         }
 
@@ -68,7 +68,7 @@ namespace ProgettoWebApi.Controllers
 
             if (user == null)
             {
-                _logger.LogWarning("❌ Login fallito: utente non trovato ({Email})", dto.Email);
+                _logger.LogWarning($"Login fallito: utente non trovato - {dto.Email}");
                 return Unauthorized(new { message = "Email o password non validi" });
             }
 
@@ -76,7 +76,7 @@ namespace ProgettoWebApi.Controllers
 
             if (!result.Succeeded)
             {
-                _logger.LogWarning("❌ Login fallito: password errata ({Email})", dto.Email);
+                _logger.LogWarning($"Login fallito - ({dto.Email})");
                 return Unauthorized(new { message = "Email o password non validi" });
             }
 
@@ -107,7 +107,7 @@ namespace ProgettoWebApi.Controllers
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            _logger.LogInformation("✅ Login riuscito per utente: {Email}", user.Email);
+            _logger.LogInformation($"Login riuscito per utente: {user.Email}");
 
             return Ok(new TokenResponse
             {

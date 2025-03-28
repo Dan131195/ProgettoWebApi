@@ -38,7 +38,7 @@ namespace ProgettoWebApi.DTOs.Biglietto
                 ArtistaNome = e.Artista?.Nome
             });
 
-            _logger.LogInformation("Eventi trovati: {Count}", result.Count());
+            _logger.LogInformation($"Eventi trovati: {result.Count()}");
             return Ok(new { message = "Eventi trovati", data = result });
         }
 
@@ -49,7 +49,7 @@ namespace ProgettoWebApi.DTOs.Biglietto
             var evento = await _eventoService.GetByIdAsync(id);
             if (evento == null)
             {
-                _logger.LogWarning("Evento non trovato ID: {Id}", id);
+                _logger.LogWarning($"Evento non trovato ID: {id}");
                 return NotFound(new { message = "Evento non trovato" });
             }
 
@@ -70,11 +70,11 @@ namespace ProgettoWebApi.DTOs.Biglietto
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEventoRequestDto dto)
         {
-            _logger.LogInformation("🔧 Richiesta creazione evento ricevuta: {Titolo}", dto.Titolo);
+            _logger.LogInformation($"Richiesta creazione evento ricevuta: {dto.Titolo}");
 
             if (dto.QuantitaBiglietti <= 0)
             {
-                _logger.LogWarning("❌ Quantità biglietti non valida: {Quantita}", dto.QuantitaBiglietti);
+                _logger.LogWarning($"Quantità biglietti non valida: {dto.QuantitaBiglietti}");
                 return BadRequest(new { message = "Quantità biglietti deve essere maggiore di zero." });
             }
 
@@ -86,28 +86,24 @@ namespace ProgettoWebApi.DTOs.Biglietto
                 ArtistaId = dto.ArtistaId
             };
 
-            // Salva evento
             var created = await _eventoService.CreateAsync(evento);
 
             if (created == null)
             {
-                _logger.LogError("❌ Errore nella creazione dell'evento");
+                _logger.LogError("Errore nella creazione dell'evento");
                 return StatusCode(500, new { message = "Errore durante la creazione dell'evento." });
             }
 
-            // Recupera evento completo con Artista per sicurezza
             var eventoSalvato = await _eventoService.GetByIdAsync(created.EventoId);
 
             if (eventoSalvato == null)
             {
-                _logger.LogError("❌ Evento salvato non trovato. ID: {Id}", created.EventoId);
+                _logger.LogError($"Evento salvato non trovato. ID: {created.EventoId}");
                 return StatusCode(500, new { message = "Errore nel recupero evento dopo salvataggio." });
             }
 
-            _logger.LogInformation("✅ Evento creato ID: {EventoId} - Creo {Quantita} biglietti...",
-                eventoSalvato.EventoId, dto.QuantitaBiglietti);
+            _logger.LogInformation($"Evento creato ID: {eventoSalvato.EventoId} - Creo {dto.QuantitaBiglietti} biglietti...");
 
-            // Crea i biglietti associati
             await _bigliettoService.CreaBigliettiPerEvento(eventoSalvato, dto.QuantitaBiglietti);
 
             return Ok(new

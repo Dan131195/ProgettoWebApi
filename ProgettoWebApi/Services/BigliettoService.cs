@@ -93,9 +93,10 @@ namespace ProgettoWebApi.Services
             {
                 var bigliettoDisponibile = await _context.Biglietti
                     .Include(b => b.Evento)
-                    .ThenInclude(e => e.Artista)
+                        .ThenInclude(e => e.Artista)
                     .Include(b => b.User)
-                    .FirstOrDefaultAsync(b => b.EventoId == eventoId && b.UserId == null);
+                    .Where(b => b.EventoId == eventoId && b.UserId == null)
+                    .FirstOrDefaultAsync();
 
                 if (bigliettoDisponibile == null) return null;
 
@@ -104,11 +105,13 @@ namespace ProgettoWebApi.Services
 
                 await _context.SaveChangesAsync();
 
+                await _context.Entry(bigliettoDisponibile).Reference(b => b.User).LoadAsync();
+
                 return bigliettoDisponibile;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore acquisto biglietto evento {EventoId}", eventoId);
+                _logger.LogError(ex, $"Errore acquisto biglietto evento {eventoId}");
                 return null;
             }
         }
@@ -129,7 +132,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore eliminazione biglietti per evento {EventoId}", eventoId);
+                _logger.LogError(ex, $"Errore eliminazione biglietti per evento {eventoId}");
                 return false;
             }
         }
@@ -138,11 +141,11 @@ namespace ProgettoWebApi.Services
         {
             try
             {
-                _logger.LogInformation("Entrato in CreaBigliettiPerEvento con quantita: {Quantita}", quantita);
+                _logger.LogInformation($"Entrato in CreaBigliettiPerEvento con quantita: {quantita}");
 
                 if (quantita <= 0)
                 {
-                    _logger.LogWarning("Quantità biglietti non valida: {Quantita}", quantita);
+                    _logger.LogWarning($"Quantità biglietti non valida: {quantita}");
                     return;
                 }
 
@@ -157,11 +160,11 @@ namespace ProgettoWebApi.Services
                 await _context.Biglietti.AddRangeAsync(biglietti);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Creati {Count} biglietti per evento ID: {EventoId}", biglietti.Count, evento.EventoId);
+                _logger.LogInformation($"Creati {biglietti.Count} biglietti per evento ID: {evento.EventoId}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante la creazione dei biglietti (EventoId: {EventoId})", evento.EventoId);
+                _logger.LogError(ex, "Errore durante la creazione dei biglietti (EventoId: {evento.EventoId})");
                 throw; // solo per debug, poi puoi rimuoverlo
             }
         }
