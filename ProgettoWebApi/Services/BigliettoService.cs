@@ -23,13 +23,48 @@ namespace ProgettoWebApi.Services
             {
                 return await _context.Biglietti
                     .Include(b => b.Evento)
-                    .ThenInclude(e => e.Artista)
+                        .ThenInclude(e => e.Artista)
                     .Include(b => b.User)
                     .ToListAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore recuperando biglietti");
+                _logger.LogError(ex, "Errore durante il recupero di tutti i biglietti");
+                return new();
+            }
+        }
+
+        public async Task<List<Biglietto>> GetDisponibiliAsync()
+        {
+            try
+            {
+                return await _context.Biglietti
+                    .Include(b => b.Evento)
+                        .ThenInclude(e => e.Artista)
+                    .Where(b => b.UserId == null)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero dei biglietti disponibili");
+                return new();
+            }
+        }
+
+        public async Task<List<Biglietto>> GetVendutiAsync()
+        {
+            try
+            {
+                return await _context.Biglietti
+                    .Include(b => b.Evento)
+                        .ThenInclude(e => e.Artista)
+                    .Include(b => b.User)
+                    .Where(b => b.UserId != null)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante il recupero dei biglietti venduti");
                 return new();
             }
         }
@@ -41,6 +76,7 @@ namespace ProgettoWebApi.Services
                 return await _context.Biglietti
                     .Include(b => b.Evento)
                     .ThenInclude(e => e.Artista)
+                    .Include(b => b.User) 
                     .Where(b => b.UserId == userId)
                     .ToListAsync();
             }
@@ -56,8 +92,10 @@ namespace ProgettoWebApi.Services
             try
             {
                 var bigliettoDisponibile = await _context.Biglietti
-                    .Where(b => b.EventoId == eventoId && b.UserId == null)
-                    .FirstOrDefaultAsync();
+                    .Include(b => b.Evento)
+                    .ThenInclude(e => e.Artista)
+                    .Include(b => b.User)
+                    .FirstOrDefaultAsync(b => b.EventoId == eventoId && b.UserId == null);
 
                 if (bigliettoDisponibile == null) return null;
 
@@ -65,6 +103,7 @@ namespace ProgettoWebApi.Services
                 bigliettoDisponibile.DataAcquisto = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
+
                 return bigliettoDisponibile;
             }
             catch (Exception ex)
@@ -99,23 +138,36 @@ namespace ProgettoWebApi.Services
         {
             try
             {
-                var biglietti = Enumerable.Range(0, quantita).Select(_ => new Biglietto
+                _logger.LogInformation("Entrato in CreaBigliettiPerEvento con quantita: {Quantita}", quantita);
+
+                if (quantita <= 0)
+                {
+                    _logger.LogWarning("Quantità biglietti non valida: {Quantita}", quantita);
+                    return;
+                }
+
+                var biglietti = Enumerable.Range(0, quantita).Select(b => new Biglietto
                 {
                     EventoId = evento.EventoId,
                     ArtistaId = evento.ArtistaId,
                     DataAcquisto = DateTime.UtcNow,
                     UserId = null
-                });
+                }).ToList();
 
                 await _context.Biglietti.AddRangeAsync(biglietti);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Creati {Count} biglietti per evento ID: {EventoId}", biglietti.Count, evento.EventoId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore creando biglietti per evento {EventoId}", evento.EventoId);
+                _logger.LogError(ex, "Errore durante la creazione dei biglietti (EventoId: {EventoId})", evento.EventoId);
+                throw; // solo per debug, poi puoi rimuoverlo
             }
         }
     }
 
-
 }
+
+
+

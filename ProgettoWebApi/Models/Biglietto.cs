@@ -12,8 +12,8 @@ namespace ProgettoWebApi.Models
         public int ArtistaId { get; set; }
         public Artista Artista { get; set; }
 
-        public string UserId { get; set; }
-        public ApplicationUser User { get; set; }
+        public string? UserId { get; set; }
+        public ApplicationUser? User { get; set; }
 
         public DateTime DataAcquisto { get; set; }
     }

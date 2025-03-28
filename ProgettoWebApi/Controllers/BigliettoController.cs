@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using ProgettoWebApi.DTOs.Biglietto;
-using ProgettoWebApi.DTOs.Evento;
-using ProgettoWebApi.Models;
 using ProgettoWebApi.Services;
+using ProgettoWebApi.DTOs.Biglietto;
+using System.Security.Claims;
 
 namespace ProgettoWebApi.Controllers
 {
@@ -12,75 +10,151 @@ namespace ProgettoWebApi.Controllers
     [Route("api/[controller]")]
     public class BigliettoController : ControllerBase
     {
-        private readonly BigliettoService _service;
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly BigliettoService _bigliettoService;
         private readonly ILogger<BigliettoController> _logger;
 
-        public BigliettoController(BigliettoService service, IHttpContextAccessor accessor, ILogger<BigliettoController> logger)
+        public BigliettoController(BigliettoService service, ILogger<BigliettoController> logger)
         {
-            _service = service;
-            _httpContextAccessor = accessor;
+            _bigliettoService = service;
             _logger = logger;
         }
 
         [HttpPost("acquista")]
-        [Authorize(Roles = "User")]
+        [Authorize(Roles = "User,Admin")]
         public async Task<IActionResult> Acquista([FromBody] AcquistaBigliettoRequestDto dto)
         {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var biglietto = await _service.AcquistaAsync(dto.EventoId, userId);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Utente non autenticato");
+                return Unauthorized(new { message = "Utente non autenticato" });
+            }
+
+            var biglietto = await _bigliettoService.AcquistaAsync(dto.EventoId, userId);
 
             if (biglietto == null)
             {
-                _logger.LogWarning("Biglietto non disponibile per EventoId {EventoId}", dto.EventoId);
-                return BadRequest(new { message = "Biglietto non disponibile" });
+                _logger.LogWarning("Nessun biglietto disponibile per EventoId: {EventoId}", dto.EventoId);
+                return BadRequest(new { message = "Nessun biglietto disponibile per questo evento" });
             }
 
-            return Ok(new { message = "Acquisto completato", data = biglietto });
+            var response = new BigliettoResponseDto
+            {
+                BigliettoId = biglietto.BigliettoId,
+                EventoId = biglietto.EventoId,
+                EventoTitolo = biglietto.Evento?.Titolo,
+                ArtistaId = biglietto.ArtistaId,
+                ArtistaNome = biglietto.Evento?.Artista?.Nome,
+                UserId = biglietto.UserId,
+                EmailUtente = biglietto.User?.Email,
+                DataAcquisto = biglietto.DataAcquisto
+            };
+
+            _logger.LogInformation("Biglietto acquistato - ID: {Id}, UserId: {UserId}", biglietto.BigliettoId, userId);
+            return Ok(new { message = "Acquisto completato", data = response });
         }
 
         [HttpGet("mytickets")]
-        [Authorize(Roles = "User")]
-        public async Task<IActionResult> GetMiei()
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> GetMyTickets()
         {
-            var userId = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null) return Unauthorized();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var biglietti = await _service.GetByUserIdAsync(userId);
+            if (string.IsNullOrEmpty(userId))
+            {
+                _logger.LogWarning("Tentativo di accesso non autenticato a /mytickets");
+                return Unauthorized(new { message = "Utente non autenticato" });
+            }
+
+            var biglietti = await _bigliettoService.GetByUserIdAsync(userId);
+
+            if (biglietti == null || !biglietti.Any())
+            {
+                _logger.LogInformation("Nessun biglietto trovato per utente {UserId}", userId);
+                return Ok(new { message = "Nessun biglietto trovato", data = new List<BigliettoResponseDto>() });
+            }
 
             var dto = biglietti.Select(b => new BigliettoResponseDto
             {
                 BigliettoId = b.BigliettoId,
                 EventoId = b.EventoId,
-                TitoloEvento = b.Evento.Titolo,
-                DataEvento = b.Evento.Data,
-                ArtistaNome = b.Evento.Artista?.Nome,
-                DataAcquisto = b.DataAcquisto
+                EventoTitolo = b.Evento?.Titolo,
+                DataEvento = b.Evento?.Data,
+                ArtistaId = b.ArtistaId,
+                ArtistaNome = b.Evento?.Artista?.Nome,
+                DataAcquisto = b.DataAcquisto,
+                UserId = b.UserId,
+                EmailUtente = b.User?.Email
             });
+
+            _logger.LogInformation("Restituiti {Count} biglietti per utente {UserId}", dto.Count(), userId);
 
             return Ok(new { message = "Biglietti trovati", data = dto });
         }
 
         [HttpGet("all")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetTutti()
+        public async Task<IActionResult> GetAll()
         {
-            var biglietti = await _service.GetAllAsync();
+            var biglietti = await _bigliettoService.GetAllAsync();
 
             var dto = biglietti.Select(b => new BigliettoResponseDto
             {
                 BigliettoId = b.BigliettoId,
                 EventoId = b.EventoId,
-                TitoloEvento = b.Evento.Titolo,
-                DataEvento = b.Evento.Data,
-                ArtistaNome = b.Evento.Artista?.Nome,
+                EventoTitolo = b.Evento?.Titolo,
+                DataEvento = b.Evento?.Data,
+                ArtistaId = b.ArtistaId,
+                ArtistaNome = b.Evento?.Artista?.Nome,
+                DataAcquisto = b.DataAcquisto,
+                UserId = b.UserId,
+                EmailUtente = b.User?.Email
+            });
+
+            return Ok(new { message = "Tutti i biglietti", data = dto });
+        }
+
+        [HttpGet("disponibili")]
+        [Authorize(Roles = "User,Admin")]
+        public async Task<IActionResult> GetDisponibili()
+        {
+            var biglietti = await _bigliettoService.GetDisponibiliAsync();
+
+            var dto = biglietti.Select(b => new BigliettoResponseDto
+            {
+                BigliettoId = b.BigliettoId,
+                EventoId = b.EventoId,
+                EventoTitolo = b.Evento?.Titolo,
+                DataEvento = b.Evento?.Data,
+                ArtistaId = b.ArtistaId,
+                ArtistaNome = b.Evento?.Artista?.Nome,
                 DataAcquisto = b.DataAcquisto
+            });
+
+            return Ok(new { message = "Biglietti disponibili", data = dto });
+        }
+
+        [HttpGet("venduti")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetVenduti()
+        {
+            var biglietti = await _bigliettoService.GetVendutiAsync();
+
+            var dto = biglietti.Select(b => new BigliettoResponseDto
+            {
+                BigliettoId = b.BigliettoId,
+                EventoId = b.EventoId,
+                EventoTitolo = b.Evento?.Titolo,
+                DataEvento = b.Evento?.Data,
+                ArtistaId = b.ArtistaId,
+                ArtistaNome = b.Evento?.Artista?.Nome,
+                DataAcquisto = b.DataAcquisto,
+                UserId = b.UserId,
+                EmailUtente = b.User?.Email
             });
 
             return Ok(new { message = "Biglietti venduti", data = dto });
         }
     }
-
 }

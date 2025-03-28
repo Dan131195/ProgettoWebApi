@@ -2,7 +2,6 @@
 using ProgettoWebApi.Data;
 using ProgettoWebApi.DTOs.Evento;
 using ProgettoWebApi.Models;
-using System;
 
 namespace ProgettoWebApi.Services
 {

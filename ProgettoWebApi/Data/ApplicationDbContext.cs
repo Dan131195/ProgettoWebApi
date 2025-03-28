@@ -30,15 +30,21 @@ namespace ProgettoWebApi.Data
 
             builder.Entity<Evento>()
                 .HasOne(e => e.Artista)
-                .WithMany()
+                .WithMany(a => a.Eventi)
                 .HasForeignKey(e => e.ArtistaId)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Biglietto>()
                 .HasOne(b => b.Evento)
                 .WithMany(e => e.Biglietti)
                 .HasForeignKey(b => b.EventoId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Biglietto>()
+                .HasOne(b => b.Artista)
+                .WithMany()
+                .HasForeignKey(b => b.ArtistaId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             builder.Entity<ApplicationUser>()
                 .HasMany(u => u.Biglietti)
@@ -50,7 +56,7 @@ namespace ProgettoWebApi.Data
             builder.Entity<ApplicationUserRole>().HasOne(a => a.ApplicationRole).WithMany(r => r.UserRoles).HasForeignKey(a => a.RoleId);
 
             builder.Entity<ApplicationRole>().HasData(
-                new ApplicationRole { Id = "1", Name = "Admin", NormalizedName = "SUPERADMIN" },
+                new ApplicationRole { Id = "1", Name = "Admin", NormalizedName = "ADMIN" },
                 new ApplicationRole { Id = "2", Name = "User", NormalizedName = "USER" }
             );
         }

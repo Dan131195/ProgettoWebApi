@@ -12,65 +12,83 @@ using ProgettoWebApi.DTOs.Account;
 
 namespace ProgettoWebApi.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AccountController : ControllerBase
     {
         private readonly Jwt _jwtSettings;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
+        private readonly ILogger<AccountController> _logger;
 
-        public AccountController(IOptions<Jwt> jwtOptions, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, RoleManager<ApplicationRole> roleManager)
+        public AccountController(
+            IOptions<Jwt> jwtOptions,
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            RoleManager<ApplicationRole> roleManager,
+            ILogger<AccountController> logger)
         {
             _jwtSettings = jwtOptions.Value;
             _userManager = userManager;
             _signInManager = signInManager;
             _roleManager = roleManager;
+            _logger = logger;
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequestDto registerRequestDto)
+        public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
         {
-            var newUser = new ApplicationUser()
+            var newUser = new ApplicationUser
             {
-                Email = registerRequestDto.Email, // Imposta l'email dell'utente
-                UserName = registerRequestDto.Email, // Imposta il nome utente uguale all'email
-                Nome = registerRequestDto.FirstName, // Imposta il nome dell'utente
-                Cognome = registerRequestDto.LastName, // Imposta il cognome dell'utente
+                Email = dto.Email,
+                UserName = dto.Email,
+                Nome = dto.FirstName,
+                Cognome = dto.LastName
             };
 
-            // Crea l'utente nel database con la password specificata
-            var result = await _userManager.CreateAsync(newUser, registerRequestDto.Password);
+            var result = await _userManager.CreateAsync(newUser, dto.Password);
 
-            // Se la creazione dell'utente non ha avuto successo, reindirizza alla pagina dei prodotti
             if (!result.Succeeded)
             {
-                return BadRequest();
+                _logger.LogWarning("❌ Registrazione fallita: {Errors}", string.Join(", ", result.Errors.Select(e => e.Description)));
+                return BadRequest(result.Errors);
             }
 
-            // Trova l'utente appena creato in base alla sua email
-            var user = await _userManager.FindByEmailAsync(newUser.Email);
+            await _userManager.AddToRoleAsync(newUser, "User");
 
-            // Aggiunge l'utente al ruolo "User"
-            await _userManager.AddToRoleAsync(newUser, "SuperAdmin");
-
-            return Ok();
+            _logger.LogInformation("✅ Utente registrato: {Email}", newUser.Email);
+            return Ok(new { message = "Registrazione completata" });
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginRequestDto loginRequestDto)
+        public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
         {
-            var user = await _userManager.FindByEmailAsync(loginRequestDto.Email);
+            var user = await _userManager.FindByEmailAsync(dto.Email);
 
-            await _signInManager.PasswordSignInAsync(user, loginRequestDto.Password, false, false);
+            if (user == null)
+            {
+                _logger.LogWarning("❌ Login fallito: utente non trovato ({Email})", dto.Email);
+                return Unauthorized(new { message = "Email o password non validi" });
+            }
 
-            var roles = await _signInManager.UserManager.GetRolesAsync(user);
+            var result = await _signInManager.CheckPasswordSignInAsync(user, dto.Password, false);
 
-            List<Claim> claims = new List<Claim>();
+            if (!result.Succeeded)
+            {
+                _logger.LogWarning("❌ Login fallito: password errata ({Email})", dto.Email);
+                return Unauthorized(new { message = "Email o password non validi" });
+            }
 
-            claims.Add(new Claim(ClaimTypes.Email, user.Email));
-            claims.Add(new Claim(ClaimTypes.Name, $"{user.Nome} {user.Cognome}"));
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, $"{user.Nome} {user.Cognome}")
+        };
+
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -78,17 +96,25 @@ namespace ProgettoWebApi.Controllers
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecurityKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var expiry = DateTime.Now.AddMinutes(_jwtSettings.ExpiresInMinutes);
+            var expiry = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiresInMinutes);
 
-            var token = new JwtSecurityToken(_jwtSettings.Issuer, _jwtSettings.Audience, claims, expires: expiry, signingCredentials: creds);
+            var token = new JwtSecurityToken(
+                issuer: _jwtSettings.Issuer,
+                audience: _jwtSettings.Audience,
+                claims: claims,
+                expires: expiry,
+                signingCredentials: creds);
 
-            string tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            return Ok(new TokenResponse()
+            _logger.LogInformation("✅ Login riuscito per utente: {Email}", user.Email);
+
+            return Ok(new TokenResponse
             {
                 Token = tokenString,
                 Expires = expiry
             });
         }
     }
+
 }
