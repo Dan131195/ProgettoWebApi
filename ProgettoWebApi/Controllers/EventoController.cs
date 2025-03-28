@@ -23,10 +23,9 @@ namespace ProgettoWebApi.DTOs.Biglietto
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            _logger.LogInformation("Richiesta GET: tutti gli eventi");
             var eventi = await _service.GetAllAsync();
 
-            var dto = eventi.Select(e => new EventoResponseDto
+            var result = eventi.Select(e => new EventoResponseDto
             {
                 EventoId = e.EventoId,
                 Titolo = e.Titolo,
@@ -36,16 +35,19 @@ namespace ProgettoWebApi.DTOs.Biglietto
                 ArtistaNome = e.Artista?.Nome
             });
 
-            return Ok(new { message = "Eventi trovati", data = dto });
+            _logger.LogInformation("Eventi trovati: {Count}", result.Count());
+            return Ok(new { message = "Eventi trovati", data = result });
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var evento = await _service.GetByIdAsync(id);
-            if (evento == null) return NotFound();
-
-            _logger.LogInformation("Evento trovato ID: {Id}", id);
+            if (evento == null)
+            {
+                _logger.LogWarning("Evento non trovato ID: {Id}", id);
+                return NotFound(new { message = "Evento non trovato" });
+            }
 
             var dto = new EventoResponseDto
             {
@@ -63,9 +65,7 @@ namespace ProgettoWebApi.DTOs.Biglietto
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEventoRequestDto dto)
         {
-            _logger.LogInformation("Creazione evento: {Titolo}", dto.Titolo);
-
-            var evento = new Evento
+            var evento = new Models.Evento
             {
                 Titolo = dto.Titolo,
                 Data = dto.Data,
@@ -74,26 +74,33 @@ namespace ProgettoWebApi.DTOs.Biglietto
             };
 
             var created = await _service.CreateAsync(evento);
+
+            if (created == null)
+            {
+                _logger.LogError("Errore nella creazione evento");
+                return BadRequest(new { message = "Errore nella creazione dell'evento" });
+            }
+
             await _bigliettoService.CreaBigliettiPerEvento(created, dto.QuantitaBiglietti);
 
+            _logger.LogInformation("Evento creato ID: {Id} con {Quantita} biglietti", created.EventoId, dto.QuantitaBiglietti);
             return Ok(new { message = "Evento creato con biglietti", data = created.EventoId });
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] CreateEventoRequestDto dto)
         {
-            _logger.LogInformation("Aggiornamento evento ID: {Id}", id);
             var updated = await _service.UpdateAsync(id, dto);
-            return updated ? Ok(new { message = "Evento aggiornato" }) : NotFound();
+            return updated ? Ok(new { message = "Evento aggiornato" }) : NotFound(new { message = "Evento non trovato" });
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            _logger.LogWarning("Eliminazione evento ID: {Id}", id);
             await _bigliettoService.DeleteByEventoIdAsync(id);
             var deleted = await _service.DeleteAsync(id);
-            return deleted ? Ok(new { message = "Evento e biglietti eliminati" }) : NotFound();
+            return deleted ? Ok(new { message = "Evento e biglietti eliminati" }) : NotFound(new { message = "Evento non trovato" });
         }
     }
+
 }

@@ -29,8 +29,8 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante il recupero dei biglietti");
-                return new List<Biglietto>();
+                _logger.LogError(ex, "Errore recuperando biglietti");
+                return new();
             }
         }
 
@@ -46,8 +46,8 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore nel recupero dei biglietti per l'utente {UserId}", userId);
-                return new List<Biglietto>();
+                _logger.LogError(ex, "Errore biglietti per utente {UserId}", userId);
+                return new();
             }
         }
 
@@ -59,8 +59,7 @@ namespace ProgettoWebApi.Services
                     .Where(b => b.EventoId == eventoId && b.UserId == null)
                     .FirstOrDefaultAsync();
 
-                if (bigliettoDisponibile == null)
-                    return null;
+                if (bigliettoDisponibile == null) return null;
 
                 bigliettoDisponibile.UserId = userId;
                 bigliettoDisponibile.DataAcquisto = DateTime.UtcNow;
@@ -70,7 +69,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'acquisto del biglietto per evento {EventoId}", eventoId);
+                _logger.LogError(ex, "Errore acquisto biglietto evento {EventoId}", eventoId);
                 return null;
             }
         }
@@ -91,7 +90,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'eliminazione dei biglietti dell'evento {EventoId}", eventoId);
+                _logger.LogError(ex, "Errore eliminazione biglietti per evento {EventoId}", eventoId);
                 return false;
             }
         }
@@ -103,6 +102,7 @@ namespace ProgettoWebApi.Services
                 var biglietti = Enumerable.Range(0, quantita).Select(_ => new Biglietto
                 {
                     EventoId = evento.EventoId,
+                    ArtistaId = evento.ArtistaId,
                     DataAcquisto = DateTime.UtcNow,
                     UserId = null
                 });
@@ -112,9 +112,10 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante la creazione dei biglietti per l'evento {EventoId}", evento.EventoId);
+                _logger.LogError(ex, "Errore creando biglietti per evento {EventoId}", evento.EventoId);
             }
         }
     }
+
 
 }

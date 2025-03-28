@@ -28,8 +28,8 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante il recupero degli eventi");
-                return new List<Evento>();
+                _logger.LogError(ex, "Errore nel recupero eventi");
+                return new();
             }
         }
 
@@ -43,12 +43,12 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante il recupero dell'evento con ID {Id}", id);
+                _logger.LogError(ex, "Errore recuperando evento ID {Id}", id);
                 return null;
             }
         }
 
-        public async Task<Evento> CreateAsync(Evento evento)
+        public async Task<Evento?> CreateAsync(Evento evento)
         {
             try
             {
@@ -58,8 +58,8 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante la creazione dell'evento");
-                throw;
+                _logger.LogError(ex, "Errore nella creazione evento");
+                return null;
             }
         }
 
@@ -80,7 +80,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'aggiornamento dell'evento con ID {Id}", id);
+                _logger.LogError(ex, "Errore aggiornando evento ID {Id}", id);
                 return false;
             }
         }
@@ -98,10 +98,11 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'eliminazione dell'evento con ID {Id}", id);
+                _logger.LogError(ex, "Errore eliminando evento ID {Id}", id);
                 return false;
             }
         }
     }
+
 
 }

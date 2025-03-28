@@ -27,7 +27,7 @@ namespace ProgettoWebApi.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Errore durante il recupero degli artisti");
-                return new List<Artista>();
+                return new();
             }
         }
 
@@ -39,7 +39,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante il recupero dell'artista con ID {Id}", id);
+                _logger.LogError(ex, "Errore recuperando artista ID {Id}", id);
                 return null;
             }
         }
@@ -54,7 +54,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante la creazione dell'artista");
+                _logger.LogError(ex, "Errore nella creazione artista");
                 throw;
             }
         }
@@ -75,7 +75,7 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'aggiornamento dell'artista con ID {Id}", id);
+                _logger.LogError(ex, "Errore aggiornando artista ID {Id}", id);
                 return false;
             }
         }
@@ -93,10 +93,11 @@ namespace ProgettoWebApi.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Errore durante l'eliminazione dell'artista con ID {Id}", id);
+                _logger.LogError(ex, "Errore eliminando artista ID {Id}", id);
                 return false;
             }
         }
     }
+
 
 }

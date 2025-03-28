@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProgettoWebApi.DTOs.Artista;
 using ProgettoWebApi.Models;
 using ProgettoWebApi.Services;
@@ -7,6 +8,7 @@ namespace ProgettoWebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class ArtistaController : ControllerBase
     {
         private readonly ArtistaService _service;
@@ -21,10 +23,8 @@ namespace ProgettoWebApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            _logger.LogInformation("Richiesta GET: tutti gli artisti");
             var artisti = await _service.GetAllAsync();
-
-            var dto = artisti.Select(a => new ArtistaResponseDto
+            var result = artisti.Select(a => new ArtistaResponseDto
             {
                 ArtistaId = a.ArtistaId,
                 Nome = a.Nome,
@@ -32,16 +32,19 @@ namespace ProgettoWebApi.Controllers
                 Biografia = a.Biografia
             });
 
-            return Ok(new { message = "Artisti trovati", data = dto });
+            _logger.LogInformation("Artisti trovati: {Count}", result.Count());
+            return Ok(new { message = "Artisti trovati", data = result });
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
             var artista = await _service.GetByIdAsync(id);
-            if (artista == null) return NotFound();
-
-            _logger.LogInformation("Artista trovato: {Id}", id);
+            if (artista == null)
+            {
+                _logger.LogWarning("Artista non trovato ID: {Id}", id);
+                return NotFound(new { message = "Artista non trovato" });
+            }
 
             return Ok(new ArtistaResponseDto
             {
@@ -55,8 +58,6 @@ namespace ProgettoWebApi.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateArtistaRequestDto dto)
         {
-            _logger.LogInformation("Creazione artista: {Nome}", dto.Nome);
-
             var artista = new Artista
             {
                 Nome = dto.Nome,
@@ -64,24 +65,25 @@ namespace ProgettoWebApi.Controllers
                 Biografia = dto.Biografia
             };
 
-            var result = await _service.CreateAsync(artista);
-            return Ok(new { message = "Artista creato", data = result.ArtistaId });
+            var created = await _service.CreateAsync(artista);
+            _logger.LogInformation("Artista creato ID: {Id}", created.ArtistaId);
+
+            return Ok(new { message = "Artista creato", data = created.ArtistaId });
         }
 
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] CreateArtistaRequestDto dto)
         {
-            _logger.LogInformation("Aggiornamento artista ID: {Id}", id);
             var updated = await _service.UpdateAsync(id, dto);
-            return updated ? Ok(new { message = "Artista aggiornato" }) : NotFound();
+            return updated ? Ok(new { message = "Artista aggiornato" }) : NotFound(new { message = "Artista non trovato" });
         }
 
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            _logger.LogWarning("Eliminazione artista ID: {Id}", id);
             var deleted = await _service.DeleteAsync(id);
-            return deleted ? Ok(new { message = "Artista eliminato" }) : NotFound();
+            return deleted ? Ok(new { message = "Artista eliminato" }) : NotFound(new { message = "Artista non trovato" });
         }
     }
+
 }

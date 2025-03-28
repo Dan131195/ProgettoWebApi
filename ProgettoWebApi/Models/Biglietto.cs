@@ -9,6 +9,7 @@ namespace ProgettoWebApi.Models
         public int EventoId { get; set; }
         public Evento Evento { get; set; }
 
+        public int ArtistaId { get; set; }
         public Artista Artista { get; set; }
 
         public string UserId { get; set; }
